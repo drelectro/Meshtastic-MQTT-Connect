@@ -13,5 +13,20 @@
     "lat": "",
     "lon": "",
     "alt": ""
+  },
+  "VK2XMC": {
+    "name": "VK2XMC",
+    "broker": "mqtt.meshtastic.org",
+    "username": "meshdev",
+    "password": "large4cats",
+    "root_topic": "msh/ANZ/2/e/",
+    "channel": "VK2XMC",
+    "key": "1234",
+    "node_number": "3490517179",
+    "long_name": "MQTTastic-XMC",
+    "short_name": "MMC",
+    "lat": "",
+    "lon": "",
+    "alt": ""
   }
 }

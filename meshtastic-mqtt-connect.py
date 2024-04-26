@@ -24,6 +24,8 @@ from cryptography.hazmat.backends import default_backend
 import base64
 import json
 import re
+import uuid
+import binascii
 
 import google.protobuf
 
@@ -31,6 +33,7 @@ import google.protobuf
 debug = False
 print_service_envelope = False
 print_message_packet = False
+print_portnum = False
 print_text_message = False
 print_node_info =  False
 print_telemetry = False
@@ -55,25 +58,33 @@ mqtt_broker = "mqtt.meshtastic.org"
 mqtt_port = 1883
 mqtt_username = "meshdev"
 mqtt_password = "large4cats"
-root_topic = "msh/US/2/e/"
+#root_topic = "msh/US/2/e/"
+root_topic = "msh/ANZ/2/e/"
 channel = "LongFast"
-key = "AQ=="
+#key = "AQ=="
+key = "1PG7OiApB1nwvP+rz05pAQ=="
+
 
 key_emoji = "\U0001F511"
 encrypted_emoji = "\U0001F512" 
 dm_emoji = "\u2192"
 
 # Generate 4 random hexadecimal characters to create a unique node name
-random_hex_chars = ''.join(random.choices('0123456789abcdef', k=4))
-node_name = '!abcd' + random_hex_chars
+#random_hex_chars = ''.join(random.choices('0123456789abcdef', k=4))
+#node_name = '!abcd' + random_hex_chars
+
+# Use a fixed node name, otherwise the node will change its name on every restart
+node_name = "!d00d" + hex(uuid.getnode() & 0xFFFF)[2:]
 
 global_message_id = random.getrandbits(32)
 
 # Convert hex to int and remove '!'
 node_number = int(node_name.replace("!", ""), 16)
 
+#client_short_name = "MMC"
+#client_long_name = "MQTTastic"
 client_short_name = "MMC"
-client_long_name = "MQTTastic"
+client_long_name = "MQTTastic-XMC"
 lat = ""
 lon = ""
 alt = ""
@@ -304,7 +315,7 @@ presets = load_presets_from_file()
 # Receive Messages
 
 def on_message(client, userdata, msg):
-    # if debug: print("on_message")
+    if debug: print("------------ on_message ------------")
     se = mqtt_pb2.ServiceEnvelope()
     is_encrypted = False
     try:
@@ -325,6 +336,10 @@ def on_message(client, userdata, msg):
     if mp.HasField("encrypted") and not mp.HasField("decoded"):
         decode_encrypted(mp)
         is_encrypted=True
+    
+    if print_portnum:
+        port = portnums_pb2.PortNum.Name(mp.decoded.portnum)
+        print('Portnum: ', port)
 
     if mp.decoded.portnum == portnums_pb2.TEXT_MESSAGE_APP:
         text_payload = mp.decoded.payload.decode("utf-8")
@@ -419,8 +434,8 @@ def on_message(client, userdata, msg):
 def decode_encrypted(mp):
         
         try:
-            # Convert key to bytes
-            key_bytes = base64.b64decode(key.encode('ascii'))
+            # Convert key to bytes, padd short keys with null bytes if necessary
+            key_bytes = base64.b64decode(key.encode('ascii')).ljust(16,b'\0')
       
             nonce_packet_id = getattr(mp, "id").to_bytes(8, "little")
             nonce_from_node = getattr(mp, "from").to_bytes(8, "little")
@@ -688,7 +703,8 @@ def encrypt_message(channel, key, mesh_packet, encoded_message):
     if debug: print("encrypt_message")
 
     mesh_packet.channel = generate_hash(channel, key)
-    key_bytes = base64.b64decode(key.encode('ascii'))
+    # Convert key to bytes, padd short keys with null bytes if necessary
+    key_bytes = base64.b64decode(key.encode('ascii')).ljust(16,b'\0')
 
     # print (f"id = {mesh_packet.id}")
     nonce_packet_id = mesh_packet.id.to_bytes(8, "little")
@@ -1216,7 +1232,7 @@ root_topic_entry.grid(row=3, column=1, padx=5, pady=1, sticky=tk.EW)
 root_topic_entry.insert(0, root_topic)
 
 
-channel_label = tk.Label(message_log_frame, text="Channel:")
+channel_label = tk.Label(message_log_frame, text="Primary Channel:")
 channel_label.grid(row=4, column=0, padx=5, pady=1, sticky=tk.W)
 
 channel_entry = tk.Entry(message_log_frame)
